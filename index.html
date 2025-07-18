@@ -15,24 +15,35 @@
         h1 {
             color: #0d47a1;
         }
+        /* Contenedor principal */
         #organigrama-container {
             margin: auto;
-            /* El ancho máximo de la imagen original */
-            max-width: 2117px; 
+            max-width: 2117px;
+            /* Necesario para contener los divs de color posicionados absolutamente */
+            position: relative; 
         }
-        /* Regla clave para que la imagen sea flexible */
-        img[usemap] {
+        /* Imagen responsive */
+        img#organigrama-imagen {
             max-width: 100%;
             height: auto;
             display: block;
+        }
+        /* Estilo para los cuadros de color superpuestos */
+        .area-overlay {
+            position: absolute;
+            background-color: rgba(13, 71, 161, 0.2); /* Color de fondo (azul con transparencia) */
+            border: 1px solid rgba(13, 71, 161, 0.5); /* Borde */
+            pointer-events: none; /* Permite que los clics lleguen a la imagen de abajo */
+            box-sizing: border-box; 
         }
     </style>
 </head>
 <body>
 
+    <h1>Organigrama Interactivo</h1>
 
     <div id="organigrama-container">
-        <img src="Organigramav4.jpg" alt="Organigrama Alcaldía de Mosquera" usemap="#organigramaCompleto" width="2117" height="1191">
+        <img src="Organigramav4.jpg" alt="Organigrama Alcaldía de Mosquera" usemap="#organigramaCompleto" width="2117" height="1191" id="organigrama-imagen">
         
         <map name="organigramaCompleto">
             <area shape="rect" coords="540,77,765,140" href="https://www.mosquera-cundinamarca.gov.co/directorio-institucional/despacho-del-alcalde-264931" target="_blank" alt="Despacho del Alcalde" title="Despacho del Alcalde">
@@ -85,23 +96,57 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jQuery-rwdImageMaps/1.6/jquery.rwdImageMaps.min.js"></script>
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/maphilight/1.4.0/jquery.maphilight.min.js"></script>
 
     <script>
         $(document).ready(function() {
-            // Inicializa el plugin para que el mapa sea responsive.
-            $('img[usemap]').rwdImageMaps();
+            var $organigramaContainer = $('#organigrama-container');
+            var $imagen = $('#organigrama-imagen');
+            var originalWidth = $imagen.attr('width'); // Ancho original de la imagen
+            var originalHeight = $imagen.attr('height'); // Alto original de la imagen
 
-            // Inicializa el plugin para resaltar las áreas y lo configura.
-            $('img[usemap]').maphilight({
-                fillColor: '0d47a1', // Color de relleno (mismo azul del título)
-                fillOpacity: 0.4,    // Opacidad del relleno
-                stroke: true,        // Activar borde
-                strokeColor: '0d47a1', // Color del borde
-                strokeOpacity: 0.9,
-                strokeWidth: 2
+            // Función para crear y posicionar los overlays de color
+            function dibujarOverlays() {
+                // Limpiar overlays anteriores para evitar duplicados al redimensionar
+                $('.area-overlay').remove();
+
+                var ratio = $imagen.width() / originalWidth;
+
+                $('map[name="organigramaCompleto"]').find('area').each(function() {
+                    var coords = $(this).data('coordsOriginales').split(',');
+                    
+                    var left = coords[0] * ratio;
+                    var top = coords[1] * ratio;
+                    var width = (coords[2] - coords[0]) * ratio;
+                    var height = (coords[3] - coords[1]) * ratio;
+
+                    $('<div></div>')
+                        .addClass('area-overlay')
+                        .css({
+                            left: left + 'px',
+                            top: top + 'px',
+                            width: width + 'px',
+                            height: height + 'px'
+                        })
+                        .appendTo($organigramaContainer);
+                });
+            }
+            
+            // Guardar las coordenadas originales antes de que el plugin las modifique
+            $('map[name="organigramaCompleto"]').find('area').each(function() {
+                $(this).data('coordsOriginales', $(this).attr('coords'));
             });
+
+            // Inicializa el plugin para que el mapa de imagen sea responsive.
+            // Esto ajustará las coordenadas del <map> para que los clics funcionen.
+            $imagen.rwdImageMaps();
+
+            // Dibujar los overlays por primera vez
+            $imagen.on('load', dibujarOverlays).each(function() {
+              if (this.complete) $(this).trigger('load');
+            });
+            
+            // Volver a dibujar los overlays cada vez que la ventana cambie de tamaño
+            $(window).resize(dibujarOverlays);
         });
     </script>
 
